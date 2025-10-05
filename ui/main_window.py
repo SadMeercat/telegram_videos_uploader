@@ -7,7 +7,7 @@ from datetime import datetime
 from PyQt5.QtWidgets import (QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, 
                              QPushButton, QLabel, QLineEdit, QTextEdit, 
                              QFileDialog, QMessageBox, QProgressBar, QGroupBox,
-                             QComboBox, QListWidget, QListWidgetItem, QSplitter)
+                             QComboBox, QListWidget, QListWidgetItem, QSplitter, QCheckBox)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 
@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
         self.time_left = 0
         self.selected_chat_id: Optional[int] = None
         self.selected_chat_name: Optional[str] = None
+        self.selected_files: List[str] = []  # Список выбранных файлов
         
         # Инициализация UI
         self.init_ui()
@@ -44,7 +45,7 @@ class MainWindow(QMainWindow):
     def init_ui(self) -> None:
         """Инициализация пользовательского интерфейса"""
         self.setWindowTitle("Telegram Video Uploader v3.1")
-        self.setGeometry(100, 100, 1100, 600)
+        self.setGeometry(100, 100, 1100, 520)  # Уменьшили высоту с 600 до 520
         
         # Применяем стили
         self.setStyleSheet(get_main_stylesheet())
@@ -137,9 +138,6 @@ class MainWindow(QMainWindow):
         
         # Загрузка видео
         self._create_upload_section()
-        
-        # Логи
-        self._create_logs_section()
         
     def _create_api_auth_section(self) -> None:
         """Создает секцию API и авторизации"""
@@ -352,19 +350,128 @@ class MainWindow(QMainWindow):
         self.left_layout.addWidget(upload_group)
         
     def _create_folder_selection(self, upload_layout: QVBoxLayout) -> None:
-        """Создает выбор папки"""
-        folder_layout = QHBoxLayout()
+        """Создает выбор файлов"""
+        # Режим выбора файлов
+        mode_layout = QHBoxLayout()
+        mode_label = QLabel("📂 Режим:")
+        mode_label.setStyleSheet("color: #374151; font-weight: 600; min-width: 80px;")
+        mode_layout.addWidget(mode_label)
         
+        self.file_mode_combo = QComboBox()
+        self.file_mode_combo.addItems([
+            "📁 Папка с файлами",
+            "📄 Один файл", 
+            "📄 Несколько файлов"
+        ])
+        self.file_mode_combo.setToolTip("Выберите что загружать: всю папку, один файл или несколько файлов")
+        self.file_mode_combo.setStyleSheet("""
+            QComboBox {
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                padding: 8px 12px;
+                background: white;
+                font-size: 11px;
+                color: #374151;
+                min-height: 20px;
+                min-width: 180px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 25px;
+                background: transparent;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                width: 0px;
+                height: 0px;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 8px solid #6b7280;
+                margin-right: 8px;
+            }
+            QComboBox:hover {
+                border-color: #3b82f6;
+            }
+            QComboBox:focus {
+                border-color: #2563eb;
+            }
+            QComboBox::down-arrow:hover {
+                background: #e5e7eb;
+                border-color: #374151;
+            }
+            QComboBox QAbstractItemView {
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                background: white;
+                selection-background-color: #3b82f6;
+                selection-color: white;
+                padding: 4px;
+            }
+        """)
+        mode_layout.addWidget(self.file_mode_combo)
+        upload_layout.addLayout(mode_layout)
+        
+        # Поле отображения выбранных файлов
         self.folder_input = QLineEdit()
         self.folder_input.setReadOnly(True)
-        self.folder_input.setPlaceholderText("Выберите папку с видео")
-        folder_layout.addWidget(self.folder_input)
+        self.folder_input.setPlaceholderText("Выберите файлы для загрузки")
+        upload_layout.addWidget(self.folder_input)
         
-        self.browse_button = QPushButton("📁 Обзор")
+        # Выпадающий список для просмотра выбранных файлов
+        self.files_list_combo = QComboBox()
+        self.files_list_combo.setVisible(False)  # Скрыт по умолчанию
+        self.files_list_combo.setEditable(False)
+        self.files_list_combo.setToolTip("Список выбранных файлов")
+        self.files_list_combo.setStyleSheet("""
+            QComboBox {
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                padding: 8px 12px;
+                background: #f8f9fa;
+                font-size: 11px;
+                color: #374151;
+                min-height: 20px;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+                background: transparent;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 6px solid #6b7280;
+                margin-right: 8px;
+            }
+            QComboBox:hover {
+                border-color: #d1d5db;
+                background: #ffffff;
+            }
+            QComboBox QAbstractItemView {
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                background: white;
+                selection-background-color: #3b82f6;
+                selection-color: white;
+                padding: 4px;
+            }
+        """)
+        upload_layout.addWidget(self.files_list_combo)
+        
+        # Кнопки выбора
+        buttons_layout = QHBoxLayout()
+        
+        self.browse_button = QPushButton("📁 Выбрать")
         self.browse_button.setStyleSheet(get_button_style('orange'))
-        folder_layout.addWidget(self.browse_button)
+        buttons_layout.addWidget(self.browse_button)
         
-        upload_layout.addLayout(folder_layout)
+        self.clear_button = QPushButton("🗑️ Очистить")
+        self.clear_button.setStyleSheet(get_button_style('red'))
+        self.clear_button.setEnabled(False)
+        buttons_layout.addWidget(self.clear_button)
+        
+        upload_layout.addLayout(buttons_layout)
         
     def _create_prefix_input(self, upload_layout: QVBoxLayout) -> None:
         """Создает поле префикса"""
@@ -416,6 +523,39 @@ class MainWindow(QMainWindow):
         settings_layout.addLayout(speed_layout)
         
         upload_layout.addLayout(settings_layout)
+        
+        # Дополнительные настройки
+        additional_layout = QHBoxLayout()
+        
+        self.send_filename_checkbox = QCheckBox("Отправлять название файла в чат")
+        self.send_filename_checkbox.setChecked(True)  # По умолчанию включено
+        self.send_filename_checkbox.setToolTip("Если включено, название файла с префиксом будет отправлено как сообщение в чат")
+        self.send_filename_checkbox.setStyleSheet("""
+            QCheckBox {
+                color: #374151;
+                font-weight: 600;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border: 2px solid #d1d5db;
+                border-radius: 4px;
+                background: white;
+            }
+            QCheckBox::indicator:checked {
+                background: #10b981;
+                border-color: #059669;
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOSIgdmlld0JveD0iMCAwIDEyIDkiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0xMC42IDEuNEw0LjMgNy43TDEuNCA0LjgiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=);
+            }
+            QCheckBox::indicator:hover {
+                border-color: #9ca3af;
+            }
+        """)
+        additional_layout.addWidget(self.send_filename_checkbox)
+        additional_layout.addStretch()
+        
+        upload_layout.addLayout(additional_layout)
         
     def _create_upload_buttons(self, upload_layout: QVBoxLayout) -> None:
         """Создает кнопки загрузки"""
@@ -487,30 +627,61 @@ class MainWindow(QMainWindow):
     def _create_logs_section(self) -> None:
         """Создает секцию логов"""
         log_group = QGroupBox("📋 Логи и статус")
+        log_group.setStyleSheet("""
+            QGroupBox {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #ffffff, stop:1 #f8f9fa);
+                border: 2px solid #f3e8ff;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 8px;
+            }
+            QGroupBox::title {
+                color: #7c3aed;
+                font-weight: bold;
+                font-size: 13px;
+            }
+        """)
         log_layout = QVBoxLayout(log_group)
         log_layout.setSpacing(6)
         
         self.status_label = QLabel("✅ Готов к работе")
+        self.status_label.setMinimumHeight(30)
+        self.status_label.setMaximumHeight(50)
+        self.status_label.setAlignment(Qt.AlignTop)
         self.status_label.setStyleSheet("""
             QLabel {
                 color: #059669;
                 font-weight: bold;
-                padding: 12px;
+                padding: 8px;
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
                     stop:0 #ecfdf5, stop:1 #d1fae5);
                 border: 1px solid #a7f3d0;
                 border-radius: 8px;
                 margin: 2px 0px;
+                font-size: 11px;
             }
         """)
         log_layout.addWidget(self.status_label)
         
         self.log_output = QTextEdit()
-        self.log_output.setMaximumHeight(80)
+        self.log_output.setMaximumHeight(120)  # Увеличили немного высоту для правой панели
         self.log_output.setReadOnly(True)
+        self.log_output.setStyleSheet("""
+            QTextEdit {
+                border: 2px solid #e5e7eb;
+                border-radius: 8px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #ffffff, stop:1 #fafafa);
+                padding: 8px;
+                font-family: "Consolas", "Courier New", monospace;
+                font-size: 9px;
+                color: #374151;
+            }
+        """)
         log_layout.addWidget(self.log_output)
         
-        self.left_layout.addWidget(log_group)
+        self.right_layout.addWidget(log_group)
         
     def _create_right_panel(self) -> None:
         """Создает правую панель с чатами"""
@@ -531,6 +702,9 @@ class MainWindow(QMainWindow):
         
         # Выбранный чат
         self._create_selected_chat()
+        
+        # Логи и статус
+        self._create_logs_section()
         
         self.right_layout.addStretch()
         
@@ -612,7 +786,7 @@ class MainWindow(QMainWindow):
     def _create_chat_list(self) -> None:
         """Создает список чатов"""
         self.chat_list_widget = QListWidget()
-        self.chat_list_widget.setMaximumHeight(200)
+        self.chat_list_widget.setMaximumHeight(160)  # Уменьшили с 200 до 160
         self.right_layout.addWidget(self.chat_list_widget)
         
     def _create_selected_chat(self) -> None:
@@ -650,8 +824,28 @@ class MainWindow(QMainWindow):
         self.api_id_input.setText(str(self.settings.get("api_id", "")))
         self.api_hash_input.setText(self.settings.get("api_hash", ""))
         self.phone_input.setText(self.settings.get("phone", ""))
-        self.folder_input.setText(self.settings.get("folder", ""))
         self.prefix_input.setText(self.settings.get("prefix_text", ""))
+        
+        # Загружаем настройки файлов
+        self.file_mode_combo.setCurrentIndex(self.settings.get("file_mode", 0))
+        self.send_filename_checkbox.setChecked(self.settings.get("send_filename", True))
+        self.selected_files = self.settings.get("selected_files", [])
+        
+        # Загружаем настройки загрузки
+        self.delay_input.setText(str(self.settings.get("delay_seconds", "2")))
+        self.speed_combo.setCurrentIndex(self.settings.get("speed_mode", 1))
+        
+        # Восстанавливаем отображение выбранных файлов
+        if self.selected_files:
+            mode = self.file_mode_combo.currentText()
+            if "Папка" in mode and len(self.selected_files) == 1:
+                self.folder_input.setText(self.selected_files[0])
+            elif "Один файл" in mode and len(self.selected_files) == 1:
+                filename = os.path.basename(self.selected_files[0])
+                self.folder_input.setText(f"📄 {filename}")
+            elif "Несколько файлов" in mode:
+                count = len(self.selected_files)
+                self.folder_input.setText(f"📄 Выбрано файлов: {count}")
         
         # Не восстанавливаем выбранный чат при запуске
         self.selected_chat_label.setText("Чат не выбран")
@@ -668,8 +862,16 @@ class MainWindow(QMainWindow):
         self.settings.set("api_id", api_id)
         self.settings.set("api_hash", self.api_hash_input.text())
         self.settings.set("phone", self.phone_input.text())
-        self.settings.set("folder", self.folder_input.text())
         self.settings.set("prefix_text", self.prefix_input.text())
+        
+        # Сохраняем настройки файлов
+        self.settings.set("file_mode", self.file_mode_combo.currentIndex())
+        self.settings.set("send_filename", self.send_filename_checkbox.isChecked())
+        self.settings.set("selected_files", self.selected_files)
+        
+        # Сохраняем настройки загрузки
+        self.settings.set("delay_seconds", self.delay_input.text())
+        self.settings.set("speed_mode", self.speed_combo.currentIndex())
         
         # Сохраняем выбранный чат
         if hasattr(self, 'selected_chat_id') and self.selected_chat_id:

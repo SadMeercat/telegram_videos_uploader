@@ -5,7 +5,7 @@ import os
 import time
 from typing import Optional
 from PyQt5.QtWidgets import QFileDialog, QMessageBox, QListWidgetItem
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 
 from ui.main_window import MainWindow
 from core.auth import TelegramAuth, TelegramAuthChecker
@@ -34,7 +34,10 @@ class MainWindowController:
         self.window.get_code_button.clicked.connect(self.request_code)
         self.window.confirm_code_button.clicked.connect(self.confirm_code)
         self.window.reset_auth_button.clicked.connect(self.reset_authorization)
-        self.window.browse_button.clicked.connect(self.browse_folder)
+        self.window.browse_button.clicked.connect(self.browse_files)
+        self.window.clear_button.clicked.connect(self.clear_files)
+        self.window.file_mode_combo.currentTextChanged.connect(self.on_file_mode_changed)
+        self.window.files_list_combo.currentTextChanged.connect(self.on_file_selected_from_list)
         self.window.prefix_input.textChanged.connect(self.on_prefix_changed)
         self.window.load_chats_button.clicked.connect(self.load_chats)
         self.window.chat_search_input.textChanged.connect(self.filter_chats)
@@ -177,14 +180,146 @@ class MainWindowController:
         QMessageBox.information(self.window, "Сброс", "Авторизация сброшена!")
     
     # Методы работы с папками и файлами
-    def browse_folder(self) -> None:
-        """Выбор папки с видео"""
-        folder = QFileDialog.getExistingDirectory(self.window, "Выберите папку с видео")
+    def browse_files(self) -> None:
+        """Выбор файлов в зависимости от режима"""
+        mode = self.window.file_mode_combo.currentText()
+        
+        if "Папка" in mode:
+            self._browse_folder()
+        elif "Один файл" in mode:
+            self._browse_single_file()
+        elif "Несколько файлов" in mode:
+            self._browse_multiple_files()
+    
+    def _browse_folder(self) -> None:
+        """Выбор папки с файлами"""
+        folder = QFileDialog.getExistingDirectory(self.window, "Выберите папку с файлами")
         if folder:
+            self.window.selected_files = [folder]
             self.window.folder_input.setText(folder)
+            self.window.clear_button.setEnabled(True)
+            self._update_files_list()  # Обновляем список файлов
             self.window.save_settings()
-            # Проверяем готовность к загрузке после выбора папки
             self._check_upload_readiness()
+    
+    def _browse_single_file(self) -> None:
+        """Выбор одного файла"""
+        file_filter = "Все поддерживаемые файлы (*.mp4 *.avi *.mkv *.mov *.wmv *.flv *.webm *.m4v *.3gp *.mp3 *.wav *.aac *.flac *.ogg *.m4a *.jpg *.jpeg *.png *.gif *.bmp *.webp *.pdf *.doc *.docx *.txt *.zip *.rar *.7z);;Видео файлы (*.mp4 *.avi *.mkv *.mov *.wmv *.flv *.webm *.m4v *.3gp);;Аудио файлы (*.mp3 *.wav *.aac *.flac *.ogg *.m4a);;Изображения (*.jpg *.jpeg *.png *.gif *.bmp *.webp);;Документы (*.pdf *.doc *.docx *.txt);;Архивы (*.zip *.rar *.7z);;Все файлы (*.*)"
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self.window, 
+            "Выберите файл для загрузки", 
+            "", 
+            file_filter
+        )
+        
+        if file_path:
+            self.window.selected_files = [file_path]
+            filename = os.path.basename(file_path)
+            self.window.folder_input.setText(f"📄 {filename}")
+            self.window.clear_button.setEnabled(True)
+            self._update_files_list()  # Обновляем список файлов
+            self.window.save_settings()
+            self._check_upload_readiness()
+    
+    def _browse_multiple_files(self) -> None:
+        """Выбор нескольких файлов"""
+        file_filter = "Все поддерживаемые файлы (*.mp4 *.avi *.mkv *.mov *.wmv *.flv *.webm *.m4v *.3gp *.mp3 *.wav *.aac *.flac *.ogg *.m4a *.jpg *.jpeg *.png *.gif *.bmp *.webp *.pdf *.doc *.docx *.txt *.zip *.rar *.7z);;Видео файлы (*.mp4 *.avi *.mkv *.mov *.wmv *.flv *.webm *.m4v *.3gp);;Аудио файлы (*.mp3 *.wav *.aac *.flac *.ogg *.m4a);;Изображения (*.jpg *.jpeg *.png *.gif *.bmp *.webp);;Документы (*.pdf *.doc *.docx *.txt);;Архивы (*.zip *.rar *.7z);;Все файлы (*.*)"
+        
+        file_paths, _ = QFileDialog.getOpenFileNames(
+            self.window, 
+            "Выберите файлы для загрузки", 
+            "", 
+            file_filter
+        )
+        
+        if file_paths:
+            self.window.selected_files = file_paths
+            count = len(file_paths)
+            self.window.folder_input.setText(f"📄 Выбрано файлов: {count}")
+            self.window.clear_button.setEnabled(True)
+            self._update_files_list()  # Обновляем список файлов
+            self.window.save_settings()
+            self._check_upload_readiness()
+    
+    def _update_files_list(self) -> None:
+        """Обновляет выпадающий список файлов"""
+        self.window.files_list_combo.clear()
+        
+        if len(self.window.selected_files) > 1:
+            # Показываем список только если выбрано несколько файлов
+            self.window.files_list_combo.setVisible(True)
+            
+            for i, file_path in enumerate(self.window.selected_files):
+                filename = os.path.basename(file_path)
+                # Ограничиваем длину имени файла для отображения
+                if len(filename) > 50:
+                    display_name = filename[:47] + "..."
+                else:
+                    display_name = filename
+                    
+                self.window.files_list_combo.addItem(f"📄 {display_name}", file_path)
+                
+                # Устанавливаем tooltip с полным путем для каждого элемента
+                self.window.files_list_combo.setItemData(i, file_path, Qt.ToolTipRole)
+                
+            # Устанавливаем общий tooltip для комбобокса
+            self.window.files_list_combo.setToolTip("Выберите файл для просмотра информации")
+        else:
+            # Скрываем список если файл один или файлов нет
+            self.window.files_list_combo.setVisible(False)
+    
+    def clear_files(self) -> None:
+        """Очистка выбранных файлов"""
+        self.window.selected_files = []
+        self.window.folder_input.clear()
+        self._update_files_list()  # Обновляем список файлов
+        
+        mode = self.window.file_mode_combo.currentText()
+        
+        if "Папка" in mode:
+            self.window.folder_input.setPlaceholderText("Выберите папку с файлами")
+        elif "Один файл" in mode:
+            self.window.folder_input.setPlaceholderText("Выберите файл для загрузки")
+        elif "Несколько файлов" in mode:
+            self.window.folder_input.setPlaceholderText("Выберите файлы для загрузки")
+            
+        self.window.clear_button.setEnabled(False)
+        self._check_upload_readiness()
+    
+    def on_file_mode_changed(self) -> None:
+        """Обработчик изменения режима выбора файлов"""
+        self.clear_files()  # Очищаем при смене режима
+        mode = self.window.file_mode_combo.currentText()
+        
+        if "Папка" in mode:
+            self.window.browse_button.setText("📁 Выбрать папку")
+        elif "Один файл" in mode:
+            self.window.browse_button.setText("📄 Выбрать файл")
+        elif "Несколько файлов" in mode:
+            self.window.browse_button.setText("📄 Выбрать файлы")
+    
+    def on_file_selected_from_list(self) -> None:
+        """Обработчик выбора файла из выпадающего списка"""
+        current_index = self.window.files_list_combo.currentIndex()
+        if current_index >= 0 and current_index < len(self.window.selected_files):
+            file_path = self.window.selected_files[current_index]
+            # Показываем полный путь во всплывающей подсказке
+            self.window.files_list_combo.setToolTip(f"Полный путь: {file_path}")
+            
+            # Можно также показать информацию о файле в статусной строке
+            try:
+                file_size = os.path.getsize(file_path)
+                size_mb = file_size / (1024 * 1024)
+                if size_mb < 1:
+                    size_str = f"{file_size / 1024:.1f} КБ"
+                else:
+                    size_str = f"{size_mb:.1f} МБ"
+                
+                filename = os.path.basename(file_path)
+                self.window.log_message(f"📄 {filename} ({size_str})")
+            except OSError:
+                pass
     
     def on_prefix_changed(self) -> None:
         """Автосохранение префикса при изменении"""
@@ -386,10 +521,19 @@ class MainWindowController:
     def _check_upload_readiness(self) -> None:
         """Проверяет готовность к загрузке"""
         has_chat = hasattr(self.window, 'selected_chat_id') and bool(self.window.selected_chat_id)
-        has_folder = bool(self.window.folder_input.text())
-        folder_exists = has_folder and os.path.exists(self.window.folder_input.text())
+        has_files = bool(self.window.selected_files)
         
-        can_upload = has_chat and has_folder and folder_exists
+        # Проверяем что выбранные файлы/папки существуют
+        files_exist = False
+        if has_files:
+            if len(self.window.selected_files) == 1 and os.path.isdir(self.window.selected_files[0]):
+                # Проверяем папку
+                files_exist = os.path.exists(self.window.selected_files[0])
+            else:
+                # Проверяем файлы
+                files_exist = all(os.path.exists(f) for f in self.window.selected_files)
+        
+        can_upload = has_chat and has_files and files_exist
         
         # Убеждаемся что can_upload это bool
         can_upload = bool(can_upload)
