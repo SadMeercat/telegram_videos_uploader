@@ -1,0 +1,13 @@
+# Telegram Video Uploader Requirements
+
+# GUI Framework
+PyQt5==5.15.10
+
+# Telegram API
+Pyrogram==2.0.106
+
+# Video processing (optional, for metadata extraction)
+moviepy==1.0.3
+
+# TgCrypto for faster encryption (recommended by Pyrogram)
+TgCrypto==1.2.5
