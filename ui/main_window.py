@@ -76,6 +76,10 @@ class MainWindow(QMainWindow):
         self.left_widget = QWidget()
         self.right_widget = QWidget()
         
+        # Устанавливаем минимальные размеры
+        self.left_widget.setMinimumWidth(500)
+        self.right_widget.setMinimumWidth(350)
+        
         self.left_layout = QVBoxLayout(self.left_widget)
         self.left_layout.setSpacing(6)
         self.left_layout.setContentsMargins(6, 6, 6, 6)
@@ -93,6 +97,7 @@ class MainWindow(QMainWindow):
     def _create_header(self) -> None:
         """Создает заголовок приложения"""
         title_widget = QWidget()
+        title_widget.setMinimumHeight(65)  # Устанавливаем минимальную высоту
         title_widget.setStyleSheet("""
             QWidget {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
@@ -103,18 +108,21 @@ class MainWindow(QMainWindow):
         """)
         
         title_layout = QVBoxLayout(title_widget)
-        title_layout.setContentsMargins(15, 6, 15, 6)
+        title_layout.setContentsMargins(15, 10, 15, 10)  # Увеличили вертикальные отступы
+        title_layout.setSpacing(5)  # Добавили интервал между элементами
         
         title = QLabel("📹 Telegram Video Uploader")
         title.setAlignment(Qt.AlignCenter)
         title.setFont(QFont("Segoe UI", 14, QFont.Bold))
-        title.setStyleSheet("color: white; background: transparent; margin: 0px;")
+        title.setStyleSheet("color: white; background: transparent; margin: 0px; padding: 2px;")
         title_layout.addWidget(title)
         
         subtitle = QLabel("Быстрая загрузка видео в Telegram с метаданными")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setFont(QFont("Segoe UI", 8))
-        subtitle.setStyleSheet("color: rgba(255, 255, 255, 0.9); background: transparent; margin: 0px;")
+        subtitle.setFont(QFont("Segoe UI", 9))  # Увеличили размер шрифта
+        subtitle.setWordWrap(True)  # Добавили перенос строк
+        subtitle.setMinimumHeight(20)  # Минимальная высота
+        subtitle.setStyleSheet("color: rgba(255, 255, 255, 0.9); background: transparent; margin: 0px; padding: 2px;")
         title_layout.addWidget(subtitle)
         
         self.left_layout.addWidget(title_widget)
@@ -286,6 +294,10 @@ class MainWindow(QMainWindow):
     def _create_auth_status(self) -> None:
         """Создает статус авторизации"""
         self.auth_status_label = QLabel("📋 Статус: Не проверено")
+        self.auth_status_label.setWordWrap(True)
+        self.auth_status_label.setMinimumHeight(40)
+        self.auth_status_label.setMaximumHeight(60)
+        self.auth_status_label.setAlignment(Qt.AlignTop)
         self.auth_status_label.setStyleSheet("""
             QLabel {
                 color: #6b7280;
@@ -434,6 +446,20 @@ class MainWindow(QMainWindow):
         file_progress_layout = QVBoxLayout(file_progress_group)
         
         self.current_file_label = QLabel("📄 Файл не выбран")
+        self.current_file_label.setWordWrap(True)
+        self.current_file_label.setMinimumHeight(25)
+        self.current_file_label.setMaximumHeight(50)
+        self.current_file_label.setAlignment(Qt.AlignTop)
+        self.current_file_label.setStyleSheet("""
+            QLabel {
+                color: #374151;
+                background: #f8f9fa;
+                border: 1px solid #e5e7eb;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+        """)
         file_progress_layout.addWidget(self.current_file_label)
         
         self.file_progress_bar = QProgressBar()
@@ -441,6 +467,19 @@ class MainWindow(QMainWindow):
         file_progress_layout.addWidget(self.file_progress_bar)
         
         self.upload_speed_label = QLabel("⚡ Скорость: -")
+        self.upload_speed_label.setMinimumHeight(25)
+        self.upload_speed_label.setMaximumHeight(35)
+        self.upload_speed_label.setAlignment(Qt.AlignTop)
+        self.upload_speed_label.setStyleSheet("""
+            QLabel {
+                color: #374151;
+                background: #f8f9fa;
+                border: 1px solid #e5e7eb;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+        """)
         file_progress_layout.addWidget(self.upload_speed_label)
         
         upload_layout.addWidget(file_progress_group)
@@ -498,6 +537,7 @@ class MainWindow(QMainWindow):
     def _create_chat_header(self) -> None:
         """Создает заголовок чатов"""
         chat_title_widget = QWidget()
+        chat_title_widget.setMinimumHeight(65)  # Устанавливаем минимальную высоту
         chat_title_widget.setStyleSheet("""
             QWidget {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
@@ -508,17 +548,21 @@ class MainWindow(QMainWindow):
         """)
         
         chat_title_layout = QVBoxLayout(chat_title_widget)
-        chat_title_layout.setContentsMargins(15, 6, 15, 6)
+        chat_title_layout.setContentsMargins(15, 10, 15, 10)  # Увеличили вертикальные отступы
+        chat_title_layout.setSpacing(5)  # Добавили интервал между элементами
         
         chat_title = QLabel("💬 Чаты и группы")
         chat_title.setAlignment(Qt.AlignCenter)
         chat_title.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        chat_title.setStyleSheet("color: white; background: transparent; margin: 0px;")
+        chat_title.setStyleSheet("color: white; background: transparent; margin: 0px; padding: 2px;")
         chat_title_layout.addWidget(chat_title)
         
         filter_info = QLabel("(Исключены каналы и боты)")
         filter_info.setAlignment(Qt.AlignCenter)
-        filter_info.setStyleSheet("color: rgba(255, 255, 255, 0.8); background: transparent; font-size: 10px; margin: 0px;")
+        filter_info.setFont(QFont("Segoe UI", 9))  # Добавили размер шрифта через QFont
+        filter_info.setWordWrap(True)  # Добавили перенос строк
+        filter_info.setMinimumHeight(20)  # Минимальная высота
+        filter_info.setStyleSheet("color: rgba(255, 255, 255, 0.8); background: transparent; margin: 0px; padding: 2px;")
         chat_title_layout.addWidget(filter_info)
         
         self.right_layout.addWidget(chat_title_widget)
@@ -533,6 +577,9 @@ class MainWindow(QMainWindow):
     def _create_chat_status(self) -> None:
         """Создает статус загрузки чатов"""
         self.chat_load_status = QLabel("Сначала авторизуйтесь")
+        self.chat_load_status.setWordWrap(True)
+        self.chat_load_status.setMinimumHeight(40)
+        self.chat_load_status.setMaximumHeight(80)
         self.chat_load_status.setStyleSheet("""
             QLabel {
                 color: #6b7280;
@@ -576,6 +623,19 @@ class MainWindow(QMainWindow):
         
         self.selected_chat_label = QLabel("💬 Чат не выбран")
         self.selected_chat_label.setWordWrap(True)
+        self.selected_chat_label.setMinimumHeight(60)
+        self.selected_chat_label.setMaximumHeight(120)
+        self.selected_chat_label.setAlignment(Qt.AlignTop)
+        self.selected_chat_label.setStyleSheet("""
+            QLabel {
+                color: #374151;
+                background: #f8f9fa;
+                border: 1px solid #e5e7eb;
+                border-radius: 6px;
+                padding: 8px;
+                font-size: 11px;
+            }
+        """)
         selected_layout.addWidget(self.selected_chat_label)
         
         # Скрытое поле для совместимости
